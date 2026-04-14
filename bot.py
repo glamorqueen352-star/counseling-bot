@@ -3,7 +3,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 
 import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID =   6366800569  # your Telegram ID
+OWNER_ID =    5688638871  # your Telegram ID
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
