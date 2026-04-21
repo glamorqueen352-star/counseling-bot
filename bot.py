@@ -5,7 +5,7 @@ import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = 6366800569  # your Telegram ID
 
-# storage
+# this is storage
 users_by_id = {}
 users_by_username = {}
 
