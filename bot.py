@@ -55,7 +55,7 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(
-        "✅ We received your message.\n\n"
+        "✅ We've received your message.\n\n"
         "A member of our team will contact you within 24 hours."
     )
 
