@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
 
-BOT_TOKEN = "8676060897:AAFiFJM5EPhh2f2900tGhNlPf0YLJyJqpVo"
+BOT_TOKEN = "8350801935:AAErjo40jC3gF82pGz9wuacZahXLPM7pWNU"
 OWNER_ID = 6366800569  # your Telegram ID
 
 users = {}
