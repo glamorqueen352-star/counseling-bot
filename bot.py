@@ -2,16 +2,22 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
 
-BOT_TOKEN = "8350801935:AAErjo40jC3gF82pGz9wuacZahXLPM7pWNU"
+# Environment variable (set in Choreo)
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
 OWNER_ID = 6366800569  # your Telegram ID
 
 users = {}
+
+# Safety check
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is missing from environment variables")
 
 
 # START COMMAND
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-       "Hi 👋 We're here to help.\n\n"
+        "Hi 👋 We're here to help.\n\n"
         "Please write your questions here, and our counseling team will contact you"
     )
 
@@ -23,14 +29,12 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = user.id
     name = user.first_name
-    username = user.username
-
-    username_text = f"@{username}" if username else "No username"
+    username_text = f"@{user.username}" if user.username else "No username"
 
     # store user
     users[user_id] = {
         "name": name,
-        "username": username
+        "username": user.username
     }
 
     await context.bot.send_message(
@@ -60,10 +64,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = int(context.args[0])
         msg = " ".join(context.args[1:])
 
-        if user_id not in users:
-            await update.message.reply_text("❌ User not found.")
-            return
-
         await context.bot.send_message(
             chat_id=user_id,
             text=f"💬 Helper:\n\n{msg}"
@@ -75,7 +75,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /reply <user_id> <message>")
 
 
-# OPTIONAL: LIST USERS
+# LIST USERS (ADMIN ONLY)
 async def users_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id != OWNER_ID:
         return
@@ -86,26 +86,30 @@ async def users_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = "👥 Active users:\n\n"
     for uid, data in users.items():
-        name = data["name"]
-        username = data["username"]
-        username_text = f"@{username}" if username else "No username"
-
-        text += f"{name} ({username_text}) → {uid}\n"
+        username_text = f"@{data['username']}" if data["username"] else "No username"
+        text += f"{data['name']} ({username_text}) → {uid}\n"
 
     await update.message.reply_text(text)
 
 
 # APP SETUP
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("reply", reply))
-app.add_handler(CommandHandler("users", users_list))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("reply", reply))
+    app.add_handler(CommandHandler("users", users_list))
 
-app.add_handler(
-    MessageHandler(
-        filters.TEXT & ~filters.COMMAND & ~filters.User(OWNER_ID),
-        handle_user
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND & ~filters.User(user_id=OWNER_ID),
+            handle_user
+        )
     )
-)
 
+    print("Bot is running...")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
