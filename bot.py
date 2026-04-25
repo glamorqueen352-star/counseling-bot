@@ -3,9 +3,11 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = 6366800569  # your Telegram ID
 
-# this is storage
+# 👇 Add both admins here
+ADMIN_IDS = [6366800569, 580443412]
+
+# storage
 users_by_id = {}
 users_by_username = {}
 
@@ -30,29 +32,31 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = user.first_name
     username = user.username
 
-    # store by ID
     users_by_id[user_id] = {
         "name": name,
         "username": username
     }
 
-    # store by username
     if username:
         users_by_username[username.lower()] = user_id
 
     username_text = f"@{username}" if username else "No username"
 
-    await context.bot.send_message(
-        chat_id=OWNER_ID,
-        text=(
-            f"📩 New message\n\n"
-            f"👤 Name: {name}\n"
-            f"🔗 Username: {username_text}\n"
-            f"🆔 ID: {user_id}\n\n"
-            f"💬 Message:\n{text}\n\n"
-            f"Reply: /reply <user_id | @username> <message>"
-        )
+    message = (
+        f"📩 New message\n\n"
+        f"👤 Name: {name}\n"
+        f"🔗 Username: {username_text}\n"
+        f"🆔 ID: {user_id}\n\n"
+        f"💬 Message:\n{text}\n\n"
+        f"Reply: /reply <user_id | @username> <message>"
     )
+
+    # 👇 send to ALL admins
+    for admin_id in ADMIN_IDS:
+        await context.bot.send_message(
+            chat_id=admin_id,
+            text=message
+        )
 
     await update.message.reply_text(
         "✅ We've received your message.\n\n"
@@ -60,20 +64,17 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# REPLY COMMAND (ID OR USERNAME)
+# REPLY COMMAND
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.from_user.id != OWNER_ID:
+    if update.message.from_user.id not in ADMIN_IDS:
         return
 
     try:
         target = context.args[0]
         msg = " ".join(context.args[1:])
 
-        # if user_id
         if target.isdigit():
             user_id = int(target)
-
-        # if username
         else:
             username = target.replace("@", "").lower()
             user_id = users_by_username.get(username)
@@ -95,7 +96,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # LIST USERS
 async def users_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.from_user.id != OWNER_ID:
+    if update.message.from_user.id not in ADMIN_IDS:
         return
 
     if not users_by_id:
@@ -110,7 +111,7 @@ async def users_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
-# MAIN APP
+# MAIN
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -120,7 +121,7 @@ def main():
 
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND & ~filters.User(user_id=OWNER_ID),
+            filters.TEXT & ~filters.COMMAND & ~filters.User(user_id=ADMIN_IDS),
             handle_user
         )
     )
