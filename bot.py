@@ -2,26 +2,21 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
 
-print("🚀 BOT STARTING...")
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# ✅ ADMINS
+# ✅ MULTIPLE ADMINS
 ADMIN_IDS = [5688638871, 931448330]
 
-# ✅ TEMP STORAGE
+# storage
 users_by_id = {}
 users_by_username = {}
 
 if not BOT_TOKEN:
-    raise ValueError("❌ BOT_TOKEN is missing from environment variables")
-
-print("✅ TOKEN LOADED")
+    raise ValueError("BOT_TOKEN is missing from environment variables")
 
 
 # START COMMAND
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📩 /start triggered")
     await update.message.reply_text(
         "Hi 👋 We're here to help.\n\n"
         "Please write your questions here, and our counseling team will contact you"
@@ -32,7 +27,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
 
-    # 🚫 Ignore admins
+    # 🚫 ignore admins manually (instead of filter)
     if user.id in ADMIN_IDS:
         return
 
@@ -41,7 +36,6 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = user.first_name
     username = user.username
 
-    # store user
     users_by_id[user_id] = {
         "name": name,
         "username": username
@@ -61,14 +55,12 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Reply: /reply <user_id | @username> <message>"
     )
 
-    print(f"📨 Message received from {user_id}")
-
-    # send to admins
+    # ✅ send to ALL admins
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(chat_id=admin_id, text=message)
-        except Exception as e:
-            print(f"❌ Failed to send to admin {admin_id}: {e}")
+        except:
+            pass
 
     await update.message.reply_text(
         "✅ We've received your message.\n\n"
@@ -81,14 +73,10 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id not in ADMIN_IDS:
         return
 
-    if len(context.args) < 2:
-        await update.message.reply_text("Usage: /reply <user_id|@username> <message>")
-        return
-
-    target = context.args[0]
-    msg = " ".join(context.args[1:])
-
     try:
+        target = context.args[0]
+        msg = " ".join(context.args[1:])
+
         if target.isdigit():
             user_id = int(target)
         else:
@@ -105,11 +93,9 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text("✅ Sent.")
-        print(f"✅ Reply sent to {user_id}")
 
-    except Exception as e:
-        print(f"❌ Reply error: {e}")
-        await update.message.reply_text(f"❌ Error: {e}")
+    except:
+        await update.message.reply_text("Usage: /reply <user_id|@username> <message>")
 
 
 # USERS LIST
@@ -131,27 +117,21 @@ async def users_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # MAIN
 def main():
-    try:
-        print("⚙️ Building bot...")
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-        app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("reply", reply))
+    app.add_handler(CommandHandler("users", users_list))
 
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(CommandHandler("reply", reply))
-        app.add_handler(CommandHandler("users", users_list))
-
-        app.add_handler(
-            MessageHandler(
-                filters.TEXT & ~filters.COMMAND,
-                handle_user
-            )
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            handle_user
         )
+    )
 
-        print("✅ Bot is running...")
-        app.run_polling()
-
-    except Exception as e:
-        print("🔥 CRASH ERROR:", e)
+    print("Bot is running...")
+    app.run_polling()
 
 
 if __name__ == "__main__":
