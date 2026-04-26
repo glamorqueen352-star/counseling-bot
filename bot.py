@@ -2,21 +2,26 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
 
+print("🚀 BOT STARTING...")
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # ✅ ADMINS
 ADMIN_IDS = [5688638871, 931448330]
 
-# ✅ STORAGE (temporary, resets on restart)
+# ✅ TEMP STORAGE
 users_by_id = {}
 users_by_username = {}
 
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN is missing from environment variables")
+    raise ValueError("❌ BOT_TOKEN is missing from environment variables")
+
+print("✅ TOKEN LOADED")
 
 
 # START COMMAND
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("📩 /start triggered")
     await update.message.reply_text(
         "Hi 👋 We're here to help.\n\n"
         "Please write your questions here, and our counseling team will contact you"
@@ -27,7 +32,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
 
-    # 🚫 Ignore admins messaging the bot
+    # 🚫 Ignore admins
     if user.id in ADMIN_IDS:
         return
 
@@ -56,12 +61,14 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Reply: /reply <user_id | @username> <message>"
     )
 
-    # send to all admins
+    print(f"📨 Message received from {user_id}")
+
+    # send to admins
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(chat_id=admin_id, text=message)
-        except:
-            print(f"Failed to send message to admin {admin_id}")
+        except Exception as e:
+            print(f"❌ Failed to send to admin {admin_id}: {e}")
 
     await update.message.reply_text(
         "✅ We've received your message.\n\n"
@@ -82,11 +89,8 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = " ".join(context.args[1:])
 
     try:
-        # if user_id
         if target.isdigit():
             user_id = int(target)
-
-        # if username
         else:
             username = target.replace("@", "").lower()
             user_id = users_by_username.get(username)
@@ -101,12 +105,14 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text("✅ Sent.")
+        print(f"✅ Reply sent to {user_id}")
 
     except Exception as e:
+        print(f"❌ Reply error: {e}")
         await update.message.reply_text(f"❌ Error: {e}")
 
 
-# LIST USERS
+# USERS LIST
 async def users_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id not in ADMIN_IDS:
         return
@@ -125,21 +131,27 @@ async def users_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # MAIN
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    try:
+        print("⚙️ Building bot...")
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("reply", reply))
-    app.add_handler(CommandHandler("users", users_list))
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            handle_user
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("reply", reply))
+        app.add_handler(CommandHandler("users", users_list))
+
+        app.add_handler(
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                handle_user
+            )
         )
-    )
 
-    print("Bot is running...")
-    app.run_polling()
+        print("✅ Bot is running...")
+        app.run_polling()
+
+    except Exception as e:
+        print("🔥 CRASH ERROR:", e)
 
 
 if __name__ == "__main__":
