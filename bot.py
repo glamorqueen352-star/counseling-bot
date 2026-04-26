@@ -4,10 +4,10 @@ import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# 👇 Add both admins here
-ADMIN_IDS = [6366800569, 580443412]
+# ✅ ADMINS
+ADMIN_IDS = [5688638871, 931448330]
 
-# storage
+# ✅ STORAGE (temporary, resets on restart)
 users_by_id = {}
 users_by_username = {}
 
@@ -26,12 +26,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # HANDLE USER MESSAGES
 async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    text = update.message.text
 
+    # 🚫 Ignore admins messaging the bot
+    if user.id in ADMIN_IDS:
+        return
+
+    text = update.message.text
     user_id = user.id
     name = user.first_name
     username = user.username
 
+    # store user
     users_by_id[user_id] = {
         "name": name,
         "username": username
@@ -51,12 +56,12 @@ async def handle_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Reply: /reply <user_id | @username> <message>"
     )
 
-    # 👇 send to ALL admins
+    # send to all admins
     for admin_id in ADMIN_IDS:
-        await context.bot.send_message(
-            chat_id=admin_id,
-            text=message
-        )
+        try:
+            await context.bot.send_message(chat_id=admin_id, text=message)
+        except:
+            print(f"Failed to send message to admin {admin_id}")
 
     await update.message.reply_text(
         "✅ We've received your message.\n\n"
@@ -69,12 +74,19 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id not in ADMIN_IDS:
         return
 
-    try:
-        target = context.args[0]
-        msg = " ".join(context.args[1:])
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /reply <user_id|@username> <message>")
+        return
 
+    target = context.args[0]
+    msg = " ".join(context.args[1:])
+
+    try:
+        # if user_id
         if target.isdigit():
             user_id = int(target)
+
+        # if username
         else:
             username = target.replace("@", "").lower()
             user_id = users_by_username.get(username)
@@ -90,8 +102,8 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text("✅ Sent.")
 
-    except:
-        await update.message.reply_text("Usage: /reply <user_id|@username> <message>")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
 
 
 # LIST USERS
@@ -121,7 +133,7 @@ def main():
 
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND & ~filters.User(user_id=ADMIN_IDS),
+            filters.TEXT & ~filters.COMMAND,
             handle_user
         )
     )
